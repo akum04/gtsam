@@ -62,14 +62,14 @@ class InertiaRatios {
     return J;
   }
 
-  Eigen::VectorXd x() const {
+  Vector2 x() const {
     Vector2 x;
     x(0) = _k1;
     x(1) = _k2;
     return x;
   }
 
-  void setState(Eigen::VectorXd x) {
+  void setState(Vector2 x) {
     _k1 = x(0);
     _k2 = x(1);
   }
@@ -88,7 +88,7 @@ class InertiaRatios {
     return res;
   }
 
-  Eigen::VectorXd vector() const {
+  Vector2 vector() const {
     Vector2 tmp;
     tmp << _k1, _k2;
     return tmp;
@@ -110,15 +110,23 @@ class InertiaRatios {
   bool equals(const InertiaRatios& ir, double tol = 1e-9) const {
     return (_k1 < tol && _k2 < tol);
   }
+
+  void Print(const std::string& str = "") {
+    if (str.size() == 0)
+      std::cout << "Inertia Ratios: ";
+    else
+      std::cout << str << " ";
+    std::cout << _k1 << _k2 << std::endl;
+  }
 };
 
 // typedef NodeExmapT<InertiaRatios> InertiaRatios_Node;
 
 // class InertiaRatiosFactor : gtsam::NoiseModelFactor1<InertiaRatios> {
 //  public:
-//   Eigen::VectorXd evaluateError(Selector s = ESTIMATE) const {
+//   Vector evaluateError(Selector s = ESTIMATE) const {
 //     InertiaRatios ir = _ir_node->value(s);
-//     Eigen::VectorXd err = ir.vector() - _measure.vector();
+//     Vector err = ir.vector() - _measure.vector();
 //     return err;
 //   }
 // };
@@ -145,9 +153,9 @@ class InertiaRatios_Factor : public FactorT<InertiaRatios> {
     }
   }
 
-  Eigen::VectorXd basic_error(Selector s = ESTIMATE) const {
+  Vector basic_error(Selector s = ESTIMATE) const {
     InertiaRatios ir = _ir_node->value(s);
-    Eigen::VectorXd err = ir.vector() - _measure.vector();
+    Vector err = ir.vector() - _measure.vector();
     return err;
   }
 };

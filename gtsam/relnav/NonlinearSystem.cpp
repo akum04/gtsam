@@ -1,10 +1,12 @@
 #include "NonlinearSystem.h"
 
+namespace gtsam {
+
 NonlinearSystem::NonlinearSystem() { h = DEFAULT_H; }
 
 // RK4 propagation of the vector
-Eigen::VectorXd NonlinearSystem::propagateRK4(double tf, Eigen::VectorXd x0) {
-  Eigen::VectorXd k1, k2, k3, k4, x;
+Vector NonlinearSystem::propagateRK4(double tf, Vector x0) {
+  Vector k1, k2, k3, k4, x;
   double t = 0;
   double dt;
   bool done = false;
@@ -30,14 +32,13 @@ Eigen::VectorXd NonlinearSystem::propagateRK4(double tf, Eigen::VectorXd x0) {
 }
 
 // RK4 adaptive propagation
-Eigen::VectorXd NonlinearSystem::propagateRK4_adaptive(double tf,
-                                                       Eigen::VectorXd x0) {
+Vector NonlinearSystem::propagateRK4_adaptive(double tf, Vector x0) {
   bool done = false;
   double h_starting = this->h;
 
   this->h = tf / INITIAL_H_FACTOR;
 
-  Eigen::VectorXd newX, errX, currX;
+  Vector newX, errX, currX;
   currX = this->propagateRK4(tf, x0);
 
   while (!done) {
@@ -65,3 +66,5 @@ Eigen::VectorXd NonlinearSystem::propagateRK4_adaptive(double tf,
   this->h = h_starting;
   return newX;
 }
+
+}  // namespace gtsam

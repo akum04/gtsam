@@ -10,54 +10,62 @@
  * -------------------------------------------------------------------------- */
 
 /**
- *  @file  InertiaRatiosFactor.h
- *  @author Luca Carlone
+ *  @file  InertiaRatiosPriorFactor.h
+ *  @author Arunkumar Rathinam
  **/
 #pragma once
 
-#include <ostream>
-
+#include <gtsam/base/Testable.h>
 #include <gtsam/base/VectorSpace.h>
+
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include "InertiaRatios.h"
 
 namespace gtsam {
 
 /**
- * A class to model GPS measurements, including a bias term which models
- * common-mode errors and that can be partially corrected if other sensors are
- * used
+ * A class for a soft prior on any Value type
  * @addtogroup SLAM
  */
-// template <class InertiaRatios>
-class InertiaRatiosFactor : public NoiseModelFactor1<InertiaRatios> {
+template <class InertiaRatios>
+class InertiaRatiosPriorFactor : public NoiseModelFactor1<InertiaRatios> {
  private:
-  typedef InertiaRatiosFactor This;
+  typedef InertiaRatiosPriorFactor<InertiaRatios> This;
   typedef NoiseModelFactor1<InertiaRatios> Base;
 
   InertiaRatios prior_; /** The measurement */
 
+  /** concept check by type */
+  GTSAM_CONCEPT_TESTABLE_TYPE(InertiaRatios)
+  GTSAM_CONCEPT_POSE_TYPE(InertiaRatios)
  public:
-  // shorthand for a smart pointer to a factor
-  typedef boost::shared_ptr<InertiaRatiosFactor> shared_ptr;
+  /// shorthand for a smart pointer to a factor
+  typedef typename boost::shared_ptr<InertiaRatiosPriorFactor<InertiaRatios> >
+      shared_ptr;
 
   /** default constructor - only use for serialization */
-  InertiaRatiosFactor() {}
+  InertiaRatiosPriorFactor() {}
+
+  virtual ~InertiaRatiosPriorFactor() {}
 
   /** Constructor */
-  InertiaRatiosFactor(Key key, const InertiaRatios& prior,
-                      const SharedNoiseModel& model)
+  InertiaRatiosPriorFactor(Key key, const InertiaRatios& prior,
+                           const SharedNoiseModel& model)
       : Base(model, key), prior_(prior) {}
 
-  virtual ~InertiaRatiosFactor() {}
+  /// @return a deep copy of this factor
+  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
 
   /** implement functions needed for Testable */
 
   /** print */
   virtual void print(const std::string& s, const KeyFormatter& keyFormatter =
                                                DefaultKeyFormatter) const {
-    std::cout << s << "InertiaRatiosFactor(" << keyFormatter(this->key())
-              << "  measured: " << prior_.vector() << std::endl;
+    std::cout << s << "PriorFactor on " << keyFormatter(this->key()) << "\n";
+    prior_.print("  prior mean: ");
     this->noiseModel_->print("  noise model: ");
   }
 
@@ -67,19 +75,16 @@ class InertiaRatiosFactor : public NoiseModelFactor1<InertiaRatios> {
     const This* e = dynamic_cast<const This*>(&expected);
     return e != NULL && Base::equals(*e, tol) &&
            this->prior_.equals(e->prior_, tol);
-    // return e != NULL && Base::equals(*e, tol) &&
-    //        traits<Point3>::Equals(this->prior_, e->prior_, tol);
   }
 
   /** implement functions needed to derive from Factor */
 
   /** vector of errors */
-  Vector evaluateError(const InertiaRatios& ir,
-                       boost::optional<Matrix&> H1 = boost::none) const {
+  Vector evaluateError(const InertiaRatios& p,
+                       boost::optional<Matrix&> H = boost::none) const {
     return ir.vector() - prior_.vector();
   }
 
-  /** return the prior */
   const InertiaRatios& prior() const { return prior_; }
 
  private:

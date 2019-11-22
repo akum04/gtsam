@@ -2,23 +2,18 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+
 #include <cmath>
 #include <iostream>
-// #include "NodeExmap.h"
+
 #include <gtsam/base/VectorSpace.h>
 
 namespace gtsam {
 
-// typedef Eigen::Matrix<double, 6, 1> Vector6d;
-
 class KinematicPose3 {
-  friend std::ostream& operator<<(std::ostream& out, const KinematicPose3& p) {
-    p.write(out);
-    return out;
-  }
-  Eigen::Vector4d _qref;
-  Eigen::Vector3d _r;
-  Eigen::Vector3d _a;
+  Vector4 _qref;
+  Vector3 _r;
+  Vector3 _a;
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -32,47 +27,47 @@ class KinematicPose3 {
     _r << 0.0, 0.0, 0.0;
   }
 
-  KinematicPose3(const Eigen::MatrixXd& hm) {
+  KinematicPose3(const Matrix& hm) {
     // Convert	matrix	to	R,T
-    Eigen::Matrix4d HM = hm / hm(3, 3);  //	enforce	T(3,3)=1
-    Eigen::Matrix3d R = HM.topLeftCorner(3, 3);
-    Eigen::Vector3d _r = HM.col(3).head(3);
+    Matrix4 HM = hm / hm(3, 3);  //	enforce	T(3,3)=1
+    Matrix3 R = HM.topLeftCorner(3, 3);
+    Vector3 _r = HM.col(3).head(3);
 
     // compute	quaternion
     _qref = quaternionFromRot(R);
-    _a = Eigen::Vector3d::Zero();
+    _a = Vector3::Zero();
   }
 
-  Eigen::VectorXd x() const {
+  Vector6 x() const {
     Vector6 x;
-    Eigen::Vector3d r = _r;
-    Eigen::Vector3d a = _a;
+    Vector3 r = _r;
+    Vector3 a = _a;
     x.segment<3>(0) = r;
     x.segment<3>(3) = a;
     return x;
   }
 
-  void setState(Eigen::VectorXd x, Eigen::Vector4d q) {
+  void setState(Vector6 x, Vector4 q) {
     _r = x.segment<3>(0);
     _a = x.segment<3>(3);
     _qref = q / q.norm();
   }
 
-  void setState(Eigen::VectorXd x) {
+  void setState(Vector6 x) {
     _r = x.segment<3>(0);
     _a = x.segment<3>(3);
   }
 
-  Eigen::Vector4d mrp2quaternion(Eigen::Vector3d mrp) const {
-    Eigen::Vector4d dq;
+  Vector4 mrp2quaternion(Vector3 mrp) const {
+    Vector4 dq;
     dq << 8 * mrp / (16 + mrp.transpose() * mrp),
         (16 - mrp.transpose() * mrp) / (16 + mrp.transpose() * mrp);
     dq /= dq.norm();
     return dq;
   }
 
-  Eigen::Vector3d quaternion2mrp(Eigen::Vector4d q) const {
-    Eigen::Vector3d mrp;
+  Vector3 quaternion2mrp(Vector4 q) const {
+    Vector3 mrp;
     if (q(3) < 0) {
       q = -q;
     }
@@ -81,9 +76,8 @@ class KinematicPose3 {
     return mrp;
   }
 
-  Eigen::Vector4d addQuaternionError(Eigen::Vector3d& mrp,
-                                     Eigen::Vector4d& qref) const {
-    Eigen::Vector4d qnew, dq;
+  Vector4 addQuaternionError(Vector3& mrp, Vector4& qref) const {
+    Vector4 qnew, dq;
     dq = mrp2quaternion(mrp);
 
     qnew = quaternionMultiplication(dq, qref);
@@ -91,11 +85,10 @@ class KinematicPose3 {
     return qnew;
   }
 
-  Eigen::Vector4d quaternionMultiplication(Eigen::Vector4d& q1,
-                                           Eigen::Vector4d& q2) const {
+  Vector4 quaternionMultiplication(Vector4& q1, Vector4& q2) const {
     // q1	\mult	q2
-    Eigen::Matrix4d qm;
-    Eigen::Vector4d result;
+    Matrix4 qm;
+    Vector4 result;
     qm << q1(3), q1(2), -q1(1), q1(0), -q1(2), q1(3), q1(0), q1(1), q1(1),
         -q1(0), q1(3), q1(2), -q1(0), -q1(1), -q1(2), q1(3);
 
@@ -105,18 +98,17 @@ class KinematicPose3 {
     return result;
   }
 
-  Eigen::Vector4d quaternionDivision(Eigen::Vector4d& q1,
-                                     Eigen::Vector4d& q2) const {
-    Eigen::Vector4d q2inv;
+  Vector4 quaternionDivision(Vector4& q1, Vector4& q2) const {
+    Vector4 q2inv;
 
     q2inv << -q2(0), -q2(1), -q2(2), q2(3);
 
-    Eigen::Vector4d result = quaternionMultiplication(q1, q2inv);
+    Vector4 result = quaternionMultiplication(q1, q2inv);
     return result;
   }
 
-  Eigen::Matrix3d rotationMatrix(Eigen::Vector4d& q) const {
-    Eigen::Matrix3d rot;
+  Matrix3 rotationMatrix(Vector4& q) const {
+    Matrix3 rot;
 
     rot(0, 0) = q(0) * q(0) - q(1) * q(1) - q(2) * q(2) + q(3) * q(3);
     rot(0, 1) = 2 * (q(0) * q(1) + q(2) * q(3));
@@ -133,8 +125,8 @@ class KinematicPose3 {
     return rot;
   }
 
-  Eigen::Vector4d quaternionFromRot(Eigen::Matrix3d& R) const {
-    Eigen::Vector4d q;
+  Vector4 quaternionFromRot(Matrix3& R) const {
+    Vector4 q;
     double div1, div2, div3, div4;
 
     double numerical_limit = 1.0e-4;
@@ -187,20 +179,20 @@ class KinematicPose3 {
     return q;
   }
 
-  Eigen::Vector3d r() const { return _r; }
-  Eigen::Vector3d a() const { return _a; }
-  Eigen::Vector4d qref() const { return _qref; }
+  Vector3 r() const { return _r; }
+  Vector3 a() const { return _a; }
+  Vector4 qref() const { return _qref; }
 
   void reset_qref() {
-    Eigen::Vector3d a_ = _a;
-    Eigen::Vector4d qref_ = _qref;
+    Vector3 a_ = _a;
+    Vector4 qref_ = _qref;
     _qref = addQuaternionError(a_, qref_);
-    _a = Eigen::Vector3d::Zero();
+    _a = Vector3::Zero();
   }
 
-  Eigen::Vector4d qTotal() const {
-    Eigen::Vector3d a_ = _a;
-    Eigen::Vector4d qref_ = _qref;
+  Vector4 qTotal() const {
+    Vector3 a_ = _a;
+    Vector4 qref_ = _qref;
     return addQuaternionError(a_, qref_);
   };
 
@@ -230,8 +222,7 @@ class KinematicPose3 {
   }
 
   void write(std::ostream& out) const {
-    out << std::endl
-        << "kinPose3	x:	" << x().transpose() << std::endl;
+    out << std::endl << "kinPose3	x:	" << x().transpose() << std::endl;
     out << "kinPose3	qref:	" << qref().transpose() << std::endl;
     out << std::endl;
   }
@@ -245,20 +236,20 @@ class KinematicPose3 {
    *
    *	@return	wTo
    */
-  Eigen::Matrix4d wTo() const {
+  Matrix4 wTo() const {
     /*
-    Eigen::Matrix4d	T;
-    Eigen::Vector4d	qtot	=	qTotal();
+    Matrix4d	T;
+    Vector4	qtot	=	qTotal();
     T.topLeftCorner(3,3)	=	rotationMatrix(qtot).transpose();
     T.col(3).head(3)	=	_r;
     T.row(3)	<<	0.,	0.,	0.,	1.;
     return	T;
     */
-    Eigen::Vector4d qtot = qTotal();
-    Eigen::Matrix3d R = rotationMatrix(qtot);
-    Eigen::Matrix3d oRw = R;
-    Eigen::Vector3d C = -oRw * _r;
-    Eigen::Matrix4d T;
+    Vector4 qtot = qTotal();
+    Matrix3 R = rotationMatrix(qtot);
+    Matrix3 oRw = R;
+    Vector3 C = -oRw * _r;
+    Matrix4 T;
     T.topLeftCorner(3, 3) = oRw;
     T.col(3).head(3) = C;
     T.row(3) << 0., 0., 0., 1.;
@@ -275,9 +266,9 @@ class KinematicPose3 {
    *
    *	@return	oTw
    */
-  Eigen::Matrix4d oTw() const {
-    Eigen::Matrix4d T;
-    Eigen::Vector4d qtot = qTotal();
+  Matrix4 oTw() const {
+    Matrix4 T;
+    Vector4 qtot = qTotal();
     T.topLeftCorner(3, 3) = rotationMatrix(qtot).transpose();
     T.col(3).head(3) = _r;
     T.row(3) << 0., 0., 0., 1.;
@@ -288,42 +279,22 @@ class KinematicPose3 {
     return traits<Vector3>::Equals(_a, pose._a, tol) &&
            traits<Vector3>::Equals(_r, pose._r, tol);
   }
-};
 
-/*
-typedef NodeExmapT<KinematicPose3> KinematicPose3_Node;
-
-class KinematicPose3_Factor : public FactorT<KinematicPose3> {
- public:
-  KinematicPose3_Node* _pose;
-
-  KinematicPose3_Factor(KinematicPose3_Node* pose,
-                         const KinematicPose3& prior, const Noise& noise)
-      : FactorT<KinematicPose3>("KinematicPose3_Factor", 6, noise, prior),
-        _pose(pose) {
-    _nodes.resize(1);
-    _nodes[0] = pose;
-  }
-
-  void initialize() {
-    if (!_pose->initialized()) {
-      KinematicPose3 predict = _measure;
-      _pose->init(predict);
-    }
-  }
-
-  Eigen::VectorXd basic_error(Selector s = ESTIMATE) const {
-    KinematicPose3 p1 = _pose->value(s);
-    Eigen::VectorXd err = p1.vector() - _measure.vector();
-    Eigen::Vector4d q1_tot = p1.qTotal();
-    Eigen::Vector4d qm_tot = _measure.qTotal();
-    Eigen::Vector4d dq = p1.quaternionDivision(q1_tot, qm_tot);
-    Eigen::Vector3d da = p1.quaternion2mrp(dq);
-
-    err.segment<3>(3) = da;
-
-    return err;
+  void Print(const std::string& str = "") {
+    if (str.size() == 0)
+      std::cout << "Kinematic Pose: ";
+    else
+      std::cout << str << " ";
+    std::cout << "kinPose3	x:	" << p.x().transpose() << std::endl;
+    std::cout << "kinPose3	qref:	" << p.qref().transpose() << std::endl;
   }
 };
-*/
+
+std::ostream& operator<<(std::ostream& out, const KinematicPose3& p) {
+  out << std::endl << "kinPose3	x:	" << p.x().transpose() << std::endl;
+  out << "kinPose3	qref:	" << p.qref().transpose() << std::endl;
+  out << std::endl;
+  return out;
+}
+
 }  // namespace gtsam

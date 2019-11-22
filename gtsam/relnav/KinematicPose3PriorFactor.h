@@ -10,54 +10,62 @@
  * -------------------------------------------------------------------------- */
 
 /**
- *  @file  KinematicPose3Factor.h
- *  @author Luca Carlone
+ *  @file  KinematicPose3PriorFactor.h
+ *  @author Arunkumar Rathinam
  **/
 #pragma once
 
-#include <ostream>
-
+#include <gtsam/base/Testable.h>
 #include <gtsam/base/VectorSpace.h>
+
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include "KinematicPose3.h"
 
 namespace gtsam {
 
 /**
- * A class to model GPS measurements, including a bias term which models
- * common-mode errors and that can be partially corrected if other sensors are
- * used
+ * A class for a soft prior on any Value type
  * @addtogroup SLAM
  */
-// template <class inertiaRatios>
-class KinematicPose3Factor : public NoiseModelFactor1<KinematicPose3> {
+template <class KinematicPose3>
+class KinematicPose3PriorFactor : public NoiseModelFactor1<KinematicPose3> {
  private:
-  typedef KinematicPose3Factor This;
+  typedef KinematicPose3PriorFactor<KinematicPose3> This;
   typedef NoiseModelFactor1<KinematicPose3> Base;
 
   KinematicPose3 prior_; /** The measurement */
 
+  /** concept check by type */
+  GTSAM_CONCEPT_TESTABLE_TYPE(KinematicPose3)
+  GTSAM_CONCEPT_POSE_TYPE(KinematicPose3)
  public:
-  // shorthand for a smart pointer to a factor
-  typedef boost::shared_ptr<KinematicPose3Factor> shared_ptr;
+  /// shorthand for a smart pointer to a factor
+  typedef typename boost::shared_ptr<KinematicPose3PriorFactor<KinematicPose3> >
+      shared_ptr;
 
   /** default constructor - only use for serialization */
-  KinematicPose3Factor() {}
+  KinematicPose3PriorFactor() {}
+
+  virtual ~KinematicPose3PriorFactor() {}
 
   /** Constructor */
-  KinematicPose3Factor(Key key, const KinematicPose3& prior,
-                       const SharedNoiseModel& model)
+  KinematicPose3PriorFactor(Key key, const KinematicPose3& prior,
+                            const SharedNoiseModel& model)
       : Base(model, key), prior_(prior) {}
 
-  virtual ~KinematicPose3Factor() {}
+  /// @return a deep copy of this factor
+  virtual gtsam::NonlinearFactor::shared_ptr clone() const {
+    return boost::static_pointer_cast<gtsam::NonlinearFactor>(
+        gtsam::NonlinearFactor::shared_ptr(new This(*this)));
+  }
 
   /** implement functions needed for Testable */
 
   /** print */
   virtual void print(const std::string& s, const KeyFormatter& keyFormatter =
                                                DefaultKeyFormatter) const {
-    std::cout << s << "KinematicPose3Factor(" << keyFormatter(this->key())
-              << "  measured: " << prior_.vector() << std::endl;
+    std::cout << s << "PriorFactor on " << keyFormatter(this->key()) << "\n";
+    prior_.print("  prior mean: ");
     this->noiseModel_->print("  noise model: ");
   }
 
@@ -67,19 +75,24 @@ class KinematicPose3Factor : public NoiseModelFactor1<KinematicPose3> {
     const This* e = dynamic_cast<const This*>(&expected);
     return e != NULL && Base::equals(*e, tol) &&
            this->prior_.equals(e->prior_, tol);
-    // return e != NULL && Base::equals(*e, tol) &&
-    //        traits<Point3>::Equals(this->prior_, e->prior_, tol);
   }
 
   /** implement functions needed to derive from Factor */
 
   /** vector of errors */
-  Vector evaluateError(const KinematicPose3& ir,
-                       boost::optional<Matrix&> H1 = boost::none) const {
-    return ir.vector() - prior_.vector();
+  Vector evaluateError(const KinematicPose3& p,
+                       boost::optional<Matrix&> H = boost::none) const {
+    Vector err = p.vector() - prior_.vector();
+    Vector4 q1_tot = p.qTotal();
+    Vector4 qm_tot = prior_.qTotal();
+    Vector4 dq = p.quaternionDivision(q1_tot, qm_tot);
+    Vector3 da = p.quaternion2mrp(dq);
+
+    err.segment<3>(3) = da;
+
+    return err;
   }
 
-  /** return the prior */
   const KinematicPose3& prior() const { return prior_; }
 
  private:

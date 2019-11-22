@@ -9,7 +9,7 @@
 #include <Eigen/Dense>
 #include "math.h"
 
-using namespace Eigen;
+namespace gtsam {
 
 class principalAxesFrame {
   friend std::ostream& operator<<(std::ostream& out,
@@ -17,20 +17,19 @@ class principalAxesFrame {
     p.write(out);
     return out;
   }
-
-  Vector3d _r;  // position	-	from	the	target	frame	to
-                // the	principal	frame
-  Vector4d _q;  // quaternion	-	from	the	target	frame	to
-                // the	principal	frame
-
-  // 3	parameter	attitude	error
-  Vector3d _a;  // Modified	Rodrigues	Parameter
+  // position	from the target frame	to the	principal frame
+  Vector3 _r;
+  // quaternion	from	the	target frame to the	principal frame
+  Vector4 _q;
+  // parameter attitude	error - Modified Rodrigues Parameter
+  Vector3 _a;
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   static const int dim = 6;
   static const char* name() { return "principalAxesFrame"; }
-  Matrix<double, 6, 6> _sqrtinf;
+  Matrix6 _sqrtinf;
 
   principalAxesFrame() {
     _r << 0.0, 0.0, 0.0;
@@ -38,55 +37,55 @@ class principalAxesFrame {
     _q << 0.0, 0.0, 0.0, 1.0;
   }
 
-  principalAxesFrame(Matrix<double, 3, 1> r) { _r = r; }
+  principalAxesFrame(Vector3 r) { _r = r; }
 
-  principalAxesFrame(Matrix<double, 3, 1> r, Vector4d q) {
+  principalAxesFrame(Vector3 r, Vector4 q) {
     _r = r;
     _q = q;
   }
 
-  VectorXd vector() const {
-    Matrix<double, 6, 1> x;
+  Vector6 vector() const {
+    Vector6 x;
     x << _r, _a;
     return x;
   }
 
-  void set(const VectorXd& v) {
+  void set(const Vector6& v) {
     _r = v.block<3, 1>(0, 0);
     _a = v.block<3, 1>(3, 0);
   }
 
-  Matrix<double, 6, 1> x() {
-    Matrix<double, 6, 1> x;
+  Vector6 x() {
+    Vector6 x;
     x << _r, _a;
     return x;
   }
 
-  Vector4d q() { return _q; }
+  Vector4 q() { return _q; }
 
-  Vector4d mrp2quaternion(Vector3d mrp) const {
-    Vector4d dq;
+  Vector4 mrp2quaternion(Vector3 mrp) const {
+    Vector4 dq;
     dq << 8 * mrp / (16 + mrp.squaredNorm()),
         (16 - mrp.squaredNorm()) / (16 + mrp.squaredNorm());
     return dq;
   }
 
-  Vector4d addQuaternionError(Vector3d mrp, Vector4d qref) const {
-    Vector4d qnew, dq;
+  Vector4 addQuaternionError(Vector3 mrp, Vector4 qref) const {
+    Vector4 qnew, dq;
     dq = mrp2quaternion(mrp);
 
     qnew = quaternionMultiplication(dq, qref);
     return qnew;
   }
 
-  principalAxesFrame exmap(const Matrix<double, 6, 1>& Delta) const {
+  principalAxesFrame exmap(const Vector6& Delta) const {
     principalAxesFrame res = *this;
     res._r += Delta.block<3, 1>(0, 0);
     res._a += Delta.block<3, 1>(3, 0);
     return res;
   }
 
-  principalAxesFrame exmap_reset(const Matrix<double, 6, 1>& Delta) {
+  principalAxesFrame exmap_reset(const Vector6& Delta) {
     principalAxesFrame res = *this;
 
     res._r += Delta.block<3, 1>(0, 0);
@@ -96,7 +95,7 @@ class principalAxesFrame {
 
     // reset	step
     res._q = addQuaternionError(res._a, res._q);
-    res._a = Vector3d::Zero();
+    res._a = Vector3::Zero();
 
     printf("inertial	reset\n");
 
@@ -110,10 +109,10 @@ class principalAxesFrame {
     out << std::endl;
   }
 
-  Vector4d quaternionMultiplication(Vector4d q1, Vector4d q2) const {
+  Vector4 quaternionMultiplication(Vector4 q1, Vector4 q2) const {
     // q1	\mult	q2
-    Matrix4d qm;
-    Vector4d result;
+    Matrix4 qm;
+    Vector4 result;
     qm << q1(3), q1(2), -q1(1), q1(0), -q1(2), q1(3), q1(0), q1(1), q1(1),
         -q1(0), q1(3), q1(2), -q1(0), -q1(1), -q1(2), q1(3);
 
@@ -123,8 +122,8 @@ class principalAxesFrame {
     return result;
   }
 
-  Matrix3d rotationMatrix(Vector4d q) const {
-    Matrix3d rot;
+  Matrix3 rotationMatrix(Vector4 q) const {
+    Matrix3 rot;
 
     rot(0, 0) = q(0) * q(0) - q(1) * q(1) - q(2) * q(2) + q(3) * q(3);
     rot(0, 1) = 2 * (q(0) * q(1) + q(2) * q(3));
@@ -143,19 +142,21 @@ class principalAxesFrame {
     return rot;
   }
 
-  gtsam::Point3 toPrincipalFrame(const gtsam::Point3& p_m) const {
-    Matrix3d R = rotationMatrix(addQuaternionError(_a, _q));
-    Vector3d vecBody = R * (p_m.vector() - _r);
-    gtsam::Point3 p_c(vecBody);
+  Point3 toPrincipalFrame(const Point3& p_m) const {
+    Matrix3 R = rotationMatrix(addQuaternionError(_a, _q));
+    Vector3 vecBody = R * (p_m.vector() - _r);
+    Point3 p_c(vecBody);
 
     return p_c;
   }
 
-  gtsam::Point3 fromPrincipalFrame(const gtsam::Point3& p_m) const {
-    Matrix3d R = rotationMatrix(addQuaternionError(_a, _q));
-    Vector3d vecBody = R.transpose() * p_m.vector() + _r;
-    gtsam::Point3 p_c(vecBody);
+  Point3 fromPrincipalFrame(const Point3& p_m) const {
+    Matrix3 R = rotationMatrix(addQuaternionError(_a, _q));
+    Vector3 vecBody = R.transpose() * p_m.vector() + _r;
+    Point3 p_c(vecBody);
 
     return p_c;
   }
 };
+
+}  // namespace gtsam

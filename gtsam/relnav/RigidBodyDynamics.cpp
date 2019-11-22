@@ -1,54 +1,56 @@
 #include "RigidBodyDynamics.h"
 
-RigidBodyDynamics::RigidBodyDynamics(gtsam::InertiaRatios ir, double sigma_v,
+namespace gtsam {
+
+RigidBodyDynamics::RigidBodyDynamics(InertiaRatios ir, double sigma_v,
                                      double sigma_w) {
-  _ir = ir;
-  _qref << 0, 0, 0, 1;
-  _r = Vector3d::Zero();
-  _v = Vector3d::Zero();
-  _a = Vector3d::Zero();
-  _w = Vector3d::Zero();
+  ir_ = ir;
+  qref_ << 0, 0, 0, 1;
+  r_ = Vector3::Zero();
+  v_ = Vector3::Zero();
+  a_ = Vector3::Zero();
+  w_ = Vector3::Zero();
 
   setMassProperties(ir);
   setCovProperties(sigma_v, sigma_w);
 }
 
-void RigidBodyDynamics::setMassProperties(gtsam::InertiaRatios ir) { _ir = ir; }
+void RigidBodyDynamics::setMassProperties(InertiaRatios ir) { ir_ = ir; }
 
 void RigidBodyDynamics::setCovProperties(double sigma_v, double sigma_w) {
-  _sigma_v = sigma_v;
-  _sigma_w = sigma_w;
-  _Q = Matrix<double, 6, 6>::Zero();
-  _Q.block<3, 3>(0, 0) = _sigma_v * _sigma_v * Matrix<double, 3, 3>::Identity();
-  _Q.block<3, 3>(3, 3) = _sigma_w * _sigma_w * Matrix<double, 3, 3>::Identity();
+  sigma_v_ = sigma_v;
+  sigma_w_ = sigma_w;
+  Q_ = Matrix6::Zero();
+  Q_.block<3, 3>(0, 0) = sigma_v_ * sigma_v_ * Matrix3::Identity();
+  Q_.block<3, 3>(3, 3) = sigma_w_ * sigma_w_ * Matrix3::Identity();
 }
 
 void RigidBodyDynamics::reset_qref() {
-  Vector3d a_ = _a;
-  Vector4d qref_ = _qref;
-  _qref = addQuaternionError(a_, qref_);
-  _a = Vector3d::Zero();
+  Vector3 a_ = a_;
+  Vector4 qref_ = qref_;
+  qref_ = addQuaternionError(a_, qref_);
+  a_ = Vector3::Zero();
 }
 
-Vector4d RigidBodyDynamics::qTotal() const {
-  Vector3d a_ = _a;
-  Vector4d qref_ = _qref;
+Vector4 RigidBodyDynamics::qTotal() const {
+  Vector3 a_ = a_;
+  Vector4 qref_ = qref_;
   return addQuaternionError(a_, qref_);
 };
 
-VectorXd RigidBodyDynamics::f(VectorXd x) {
-  Vector3d dr, dv, da, dw;
-  Matrix<double, 12, 12> lambda, dLambda;
-  VectorXd vec_dLambda;
-  VectorXd dx(90);
+Vector RigidBodyDynamics::f(Vector x) {
+  Vector3 dr, dv, da, dw;
+  Eigen::Matrix<double, 12, 12> lambda, dLambda;
+  Vector vec_dLambda;
+  Vector dx(90);
 
-  Vector3d r = x.segment<3>(0);
-  Vector3d v = x.segment<3>(3);
-  Vector3d a = x.segment<3>(6);
-  Vector3d w = x.segment<3>(9);
+  Vector3 r = x.segment<3>(0);
+  Vector3 v = x.segment<3>(3);
+  Vector3 a = x.segment<3>(6);
+  Vector3 w = x.segment<3>(9);
 
-  MatrixXd Bw = getBw();
-  Matrix3d J = _ir.getJ();
+  Matrix Bw = getBw();
+  Matrix3 J = ir_.getJ();
 
   // Nonlinear	State	Model	\dot	x	=	f(x)
 
@@ -60,7 +62,7 @@ VectorXd RigidBodyDynamics::f(VectorXd x) {
   /*
    *	\mathbf{\dot	v}	=	0
    */
-  dv = Vector3d::Zero();
+  dv = Vector3::Zero();
 
   /*
    *	\frac{d	\mathbf{a}_p}{dt}	=
@@ -84,21 +86,21 @@ VectorXd RigidBodyDynamics::f(VectorXd x) {
   // see	Brown	&	Hwang	pg	204
 
   // Compute	Linear	transition	matrix
-  Matrix<double, 12, 12> A = Matrix<double, 12, 12>::Zero();
+  Eigen::Matrix<double, 12, 12> A = Eigen::Matrix<double, 12, 12>::Zero();
 
   // position	derivative
-  A.block<3, 3>(0, 3) = Matrix<double, 3, 3>::Identity();
+  A.block<3, 3>(0, 3) = Matrix3::Identity();
 
   // mrp	kinematics
   A.block<3, 3>(6, 6) =
-      -0.5 * crossProductMat(w) + w.dot(a) / 8 * Matrix3d::Identity();
-  A.block<3, 3>(6, 9) = (1 - a.dot(a / 16)) * Matrix3d::Identity();
+      -0.5 * crossProductMat(w) + w.dot(a) / 8 * Matrix3::Identity();
+  A.block<3, 3>(6, 9) = (1 - a.dot(a / 16)) * Matrix3::Identity();
 
   // angular	velocity	dynamics
   A.block<3, 3>(9, 9) = -J.inverse() * crossProductMat(w) * J;
 
   lambda = vec2symmMat(x.segment<78>(12));
-  dLambda = A * lambda + lambda * A.transpose() + Bw * _Q * Bw.transpose();
+  dLambda = A * lambda + lambda * A.transpose() + Bw * Q_ * Bw.transpose();
   vec_dLambda = symmMat2Vec(dLambda);
   // write	to	dx
   dx.segment<3>(0) = dr;
@@ -110,8 +112,8 @@ VectorXd RigidBodyDynamics::f(VectorXd x) {
   return dx;
 }
 
-Matrix3d RigidBodyDynamics::crossProductMat(Vector3d vec) {
-  Matrix3d M = Matrix3d::Zero();
+Matrix3 RigidBodyDynamics::crossProductMat(Vector3 vec) {
+  Matrix3 M = Matrix3::Zero();
   M(0, 1) = -vec(2);
   M(0, 2) = vec(1);
   M(1, 0) = vec(2);
@@ -122,8 +124,8 @@ Matrix3d RigidBodyDynamics::crossProductMat(Vector3d vec) {
   return M;
 }
 
-VectorXd RigidBodyDynamics::symmMat2Vec(Matrix<double, 12, 12> M) {
-  VectorXd v(78);
+Vector RigidBodyDynamics::symmMat2Vec(Eigen::Matrix<double, 12, 12> M) {
+  Vector v(78);
   int count = 0;
   for (int row = 0; row < 12; row++) {
     for (int col = row; col < 12; col++) {
@@ -134,8 +136,8 @@ VectorXd RigidBodyDynamics::symmMat2Vec(Matrix<double, 12, 12> M) {
   return v;
 }
 
-Matrix<double, 12, 12> RigidBodyDynamics::vec2symmMat(VectorXd v) {
-  Matrix<double, 12, 12> M = Matrix<double, 12, 12>::Zero();
+Eigen::Matrix<double, 12, 12> RigidBodyDynamics::vec2symmMat(Vector v) {
+  Eigen::Matrix<double, 12, 12> M = Eigen::Matrix<double, 12, 12>::Zero();
   int count = 0;
   for (int row = 0; row < 12; row++) {
     for (int col = row; col < 12; col++) {
@@ -147,32 +149,32 @@ Matrix<double, 12, 12> RigidBodyDynamics::vec2symmMat(VectorXd v) {
   return M;
 }
 
-VectorXd RigidBodyDynamics::x() const {
-  VectorXd x(12);
-  x.segment<3>(0) = _r;
-  x.segment<3>(3) = _v;
-  x.segment<3>(6) = _a;
-  x.segment<3>(9) = _w;
+Vector RigidBodyDynamics::x() const {
+  Vector x(12);
+  x.segment<3>(0) = r_;
+  x.segment<3>(3) = v_;
+  x.segment<3>(6) = a_;
+  x.segment<3>(9) = w_;
   return x;
 }
 
-void RigidBodyDynamics::setState(VectorXd x, Vector4d q) {
-  _r = x.segment<3>(0);
-  _v = x.segment<3>(3);
-  _a = x.segment<3>(6);
-  _w = x.segment<3>(9);
-  _qref = q / q.norm();
+void RigidBodyDynamics::setState(Vector x, Vector4 q) {
+  r_ = x.segment<3>(0);
+  v_ = x.segment<3>(3);
+  a_ = x.segment<3>(6);
+  w_ = x.segment<3>(9);
+  qref_ = q / q.norm();
 }
 
-void RigidBodyDynamics::setState(VectorXd x) {
-  _r = x.segment<3>(0);
-  _v = x.segment<3>(3);
-  _a = x.segment<3>(6);
-  _w = x.segment<3>(9);
+void RigidBodyDynamics::setState(Vector x) {
+  r_ = x.segment<3>(0);
+  v_ = x.segment<3>(3);
+  a_ = x.segment<3>(6);
+  w_ = x.segment<3>(9);
 }
 
-Vector4d RigidBodyDynamics::mrp2quaternion(Vector3d mrp) const {
-  Vector4d dq;
+Vector4 RigidBodyDynamics::mrp2quaternion(Vector3 mrp) const {
+  Vector4 dq;
   dq << 8 * mrp / (16 + mrp.transpose() * mrp),
       (16 - mrp.transpose() * mrp) / (16 + mrp.transpose() * mrp);
   dq /= dq.norm();
@@ -180,8 +182,8 @@ Vector4d RigidBodyDynamics::mrp2quaternion(Vector3d mrp) const {
   return dq;
 }
 
-Vector3d RigidBodyDynamics::quaternion2mrp(Vector4d q) const {
-  Vector3d mrp;
+Vector3 RigidBodyDynamics::quaternion2mrp(Vector4 q) const {
+  Vector3 mrp;
   if (q(3) < 0) {
     q = -q;
   }
@@ -190,26 +192,26 @@ Vector3d RigidBodyDynamics::quaternion2mrp(Vector4d q) const {
   return mrp;
 }
 
-Vector4d RigidBodyDynamics::addQuaternionError(Vector3d &mrp,
-                                               Vector4d &qref) const {
-  Vector4d qnew, dq;
+Vector4 RigidBodyDynamics::addQuaternionError(Vector3 &mrp,
+                                              Vector4 &qref) const {
+  Vector4 qnew, dq;
   dq = mrp2quaternion(mrp);
 
-  Vector4d qnew1 = quaternionMultiplication(dq, qref);
+  Vector4 qnew1 = quaternionMultiplication(dq, qref);
 
   if (qnew1.dot(qref) >= 0) {
     return qnew1;
   } else {
-    Vector4d qnew2 = -1 * qnew1;
+    Vector4 qnew2 = -1 * qnew1;
     return qnew2;
   }
 }
 
-Vector4d RigidBodyDynamics::quaternionMultiplication(Vector4d &q1,
-                                                     Vector4d &q2) const {
+Vector4 RigidBodyDynamics::quaternionMultiplication(Vector4 &q1,
+                                                    Vector4 &q2) const {
   // q1	\mult	q2
-  Matrix4d qm;
-  Vector4d result;
+  Matrix4 qm;
+  Vector4 result;
   qm << q1(3), q1(2), -q1(1), q1(0), -q1(2), q1(3), q1(0), q1(1), q1(1), -q1(0),
       q1(3), q1(2), -q1(0), -q1(1), -q1(2), q1(3);
 
@@ -219,33 +221,32 @@ Vector4d RigidBodyDynamics::quaternionMultiplication(Vector4d &q1,
   return result;
 }
 
-Vector4d RigidBodyDynamics::quaternionDivision(Vector4d &q1,
-                                               Vector4d &q2) const {
-  Vector4d q2inv;
+Vector4 RigidBodyDynamics::quaternionDivision(Vector4 &q1, Vector4 &q2) const {
+  Vector4 q2inv;
 
   q2inv << -q2(0), -q2(1), -q2(2), q2(3);
 
-  Vector4d result = quaternionMultiplication(q1, q2inv);
+  Vector4 result = quaternionMultiplication(q1, q2inv);
   return result;
 }
 
-Vector3d RigidBodyDynamics::diffQuaternion(Vector4d &q, Vector4d &qprev,
-                                           double dt) const {
-  Vector4d dq = (q - qprev) / dt;
-  Matrix4d M;
+Vector3 RigidBodyDynamics::diffQuaternion(Vector4 &q, Vector4 &qprev,
+                                          double dt) const {
+  Vector4 dq = (q - qprev) / dt;
+  Matrix4 M;
 
   M << qprev(3), qprev(2), -qprev(1), -qprev(0), -qprev(2), qprev(3), qprev(0),
       -qprev(1), qprev(1), -qprev(0), qprev(3), -qprev(2), qprev(0), qprev(1),
       qprev(2), qprev(3);
 
-  Vector4d wp = 2 * M * dq;
-  Vector3d w = wp.head(3);
+  Vector4 wp = 2 * M * dq;
+  Vector3 w = wp.head(3);
 
   return w;
 }
 
-Matrix3d RigidBodyDynamics::rotationMatrix(Vector4d &q) const {
-  Matrix3d rot;
+Matrix3 RigidBodyDynamics::rotationMatrix(Vector4 &q) const {
+  Matrix3 rot;
 
   rot(0, 0) = q(0) * q(0) - q(1) * q(1) - q(2) * q(2) + q(3) * q(3);
   rot(0, 1) = 2 * (q(0) * q(1) + q(2) * q(3));
@@ -262,13 +263,13 @@ Matrix3d RigidBodyDynamics::rotationMatrix(Vector4d &q) const {
   return rot;
 }
 
-Vector4d RigidBodyDynamics::quaternionFromRot(Matrix3d &R) const {
-  Vector4d q;
+Vector4 RigidBodyDynamics::quaternionFromRot(Matrix3 &R) const {
+  Vector4 q;
   double div1, div2, div3, div4;
 
   double numerical_limit = 1.0e-4;
 
-  if (abs(R.determinant() - 1) > numerical_limit) {
+  if (std::abs(R.determinant() - 1) > numerical_limit) {
     std::cerr << "R does not have a determinant of + 1" << std::endl;
   } else {
     div1 = 0.5 * sqrt(1 + R(0, 0) + R(1, 1) + R(2, 2));
@@ -315,21 +316,23 @@ Vector4d RigidBodyDynamics::quaternionFromRot(Matrix3d &R) const {
   return q;
 }
 
-MatrixXd RigidBodyDynamics::getBw() const {
-  Matrix<double, 12, 6> Bw;
-  Bw = Matrix<double, 12, 6>::Zero();
-  Bw.block<3, 3>(3, 0) = Matrix3d::Identity();
-  Bw.block<3, 3>(9, 3) = Matrix3d::Identity();
+Matrix RigidBodyDynamics::getBw() const {
+  Eigen::Matrix<double, 12, 6> Bw;
+  Bw = Eigen::Matrix<double, 12, 6>::Zero();
+  Bw.block<3, 3>(3, 0) = Matrix3::Identity();
+  Bw.block<3, 3>(9, 3) = Matrix3::Identity();
 
   return Bw;
 }
 
-Matrix3d RigidBodyDynamics::getJ() const { return _ir.getJ(); }
+Matrix3 RigidBodyDynamics::getJ() const { return ir_.getJ(); }
 
-gtsam::InertiaRatios RigidBodyDynamics::getIR() const { return _ir; }
+InertiaRatios RigidBodyDynamics::getIR() const { return ir_; }
 
-void RigidBodyDynamics::setIR(gtsam::InertiaRatios ir) { _ir = ir; }
+void RigidBodyDynamics::setIR(InertiaRatios ir) { ir_ = ir; }
 
-double RigidBodyDynamics::getSigmaV() const { return _sigma_v; }
+double RigidBodyDynamics::getSigmaV() const { return sigma_v_; }
 
-double RigidBodyDynamics::getSigmaW() const { return _sigma_w; }
+double RigidBodyDynamics::getSigmaW() const { return sigma_w_; }
+
+}  // namespace gtsam

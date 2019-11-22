@@ -8,16 +8,11 @@
 #include "Noise.h"
 #include "RigidBodyDynamics.h"
 
-using namespace Eigen;
+// using namespace Eigen;
 namespace gtsam {
 
-class dynamicPose3d_NL {
-  friend std::ostream& operator<<(std::ostream& out,
-                                  const dynamicPose3d_NL& p) {
-    p.write(out);
-    return out;
-  }
-
+class DynamicPose3 {
+ private:
   RigidBodyDynamics rbd;
 
  public:
@@ -25,62 +20,62 @@ class dynamicPose3d_NL {
   //	assignment	operator	and	copy	constructor
   // implicitly created,	which	is	ok
   static const int dim = 12;
-  static const char* name() { return "dynamicPose3d_NL"; }
+  static const char* name() { return "DynamicPose3"; }
 
   Noise* factor_noise;  // check	if	this	is	ever	used
 
-  dynamicPose3d_NL(InertiaRatios ir, double sigma_v, double sigma_w)
+  DynamicPose3(InertiaRatios ir, double sigma_v, double sigma_w)
       : rbd(ir, sigma_v, sigma_w) {}
 
   // copy	constructor
-  dynamicPose3d_NL(const dynamicPose3d_NL& cSource)
+  DynamicPose3(const DynamicPose3& cSource)
       : rbd(cSource.rbd.getIR(), cSource.rbd.getSigmaV(),
             cSource.rbd.getSigmaW()) {
     rbd.setState(cSource.rbd.x(), cSource.rbd.qref());
   }
 
-  dynamicPose3d_NL& operator=(const dynamicPose3d_NL& cSource) {
+  DynamicPose3& operator=(const DynamicPose3& cSource) {
     rbd = RigidBodyDynamics(cSource.rbd.getIR(), cSource.rbd.getSigmaV(),
                             cSource.rbd.getSigmaW());
     rbd.setState(cSource.rbd.x(), cSource.rbd.qref());
     return *this;
   }
 
-  dynamicPose3d_NL(VectorXd x, InertiaRatios ir, double sigma_v, double sigma_w)
+  DynamicPose3(Vector x, InertiaRatios ir, double sigma_v, double sigma_w)
       : rbd(ir, sigma_v, sigma_w) {
-    Vector4d qref;
+    Vector4 qref;
     qref << 0, 0, 0, 1;
     if (x.size() == 12) {
       rbd.setState(x, qref);
     }
   }
 
-  dynamicPose3d_NL(VectorXd x, Vector4d qref, InertiaRatios ir, double sigma_v,
-                   double sigma_w)
+  DynamicPose3(Vector x, Vector4 qref, InertiaRatios ir, double sigma_v,
+               double sigma_w)
       : rbd(ir, sigma_v, sigma_w) {
     if (x.size() == 12) {
       rbd.setState(x, qref);
     }
   }
 
-  dynamicPose3d_NL(const Matrix4d& hm, bool initVelocities, double dt,
-                   InertiaRatios ir, double sigma_v, double sigma_w)
+  DynamicPose3(const Matrix4& hm, bool initVelocities, double dt,
+               InertiaRatios ir, double sigma_v, double sigma_w)
       : rbd(ir, sigma_v, sigma_w) {
-    Eigen::Matrix<double, 12, 1> x;
-    Vector3d r;
-    Vector3d v;
-    Vector3d a;
-    Vector4d q;
-    Vector3d w;
+    Vector12 x;
+    Vector3 r;
+    Vector3 v;
+    Vector3 a;
+    Vector4 q;
+    Vector3 w;
 
     // Convert	matrix	to	R,T
-    Matrix4d HM = hm / hm(3, 3);  //	enforce	T(3,3)=1
-    Matrix3d R = HM.topLeftCorner(3, 3);
-    Vector3d T = HM.col(3).head(3);
+    Matrix4 HM = hm / hm(3, 3);  //	enforce	T(3,3)=1
+    Matrix3 R = HM.topLeftCorner(3, 3);
+    Vector3 T = HM.col(3).head(3);
 
     // compute	quaternion
     q = rbd.quaternionFromRot(R);
-    a = Vector3d::Zero();
+    a = Vector3::Zero();
 
     if (initVelocities) {
       // differentiate	linear	velocity
@@ -98,8 +93,8 @@ class dynamicPose3d_NL {
        */
       w = 2 * q.head(3) / dt;
     } else {
-      v = Vector3d::Zero();
-      w = Vector3d::Zero();
+      v = Vector3::Zero();
+      w = Vector3::Zero();
     }
 
     x.block<3, 1>(0, 0) = T;
@@ -109,18 +104,18 @@ class dynamicPose3d_NL {
     rbd.setState(x, q);
   }
 
-  VectorXd x() { return rbd.x(); };
-  Vector4d q() { return rbd.qref(); };
-  Vector4d qTotal() const { return rbd.qTotal(); };
+  Vector x() { return rbd.x(); };
+  Vector4 q() { return rbd.qref(); };
+  Vector4 qTotal() const { return rbd.qTotal(); };
 
-  dynamicPose3d_NL exmap(const Eigen::Matrix<double, 12, 1>& Delta) const {
-    dynamicPose3d_NL res = *this;
+  DynamicPose3 exmap(const Vector12& Delta) const {
+    DynamicPose3 res = *this;
     res.rbd.setState(res.rbd.x() + Delta);
     return res;
   }
 
-  dynamicPose3d_NL exmap_reset(const Eigen::Matrix<double, 12, 1>& Delta) {
-    dynamicPose3d_NL res = *this;
+  DynamicPose3 exmap_reset(const Vector12& Delta) {
+    DynamicPose3 res = *this;
     res.rbd.setState(res.rbd.x() + Delta);
     res.rbd.reset_qref();
 
@@ -140,53 +135,52 @@ class dynamicPose3d_NL {
     return res;
   }
 
-  void set(const VectorXd& v) { rbd.setState(v); }
+  void set(const Vector& v) { rbd.setState(v); }
 
-  void set_qref(const Vector4d& qset) { rbd.setState(rbd.x(), qset); }
+  void set_qref(const Vector4& qset) { rbd.setState(rbd.x(), qset); }
 
   void rezero() {
-    VectorXd x = VectorXd::Zero(12);
-    Vector4d q;
+    Vector x = Vector::Zero(12);
+    Vector4 q;
     q << 0, 0, 0, 1;
     rbd.setState(x, q);
   }
 
-  dynamicPose3d_NL propagate(double dt, InertiaRatios& ir) {
-    VectorXd x0 = VectorXd::Zero(90);
+  DynamicPose3 propagate(double dt, InertiaRatios& ir) {
+    Vector x0 = Vector::Zero(90);
     x0.head(12) = rbd.x();
     rbd.setIR(ir);
     //	std::cout	<<	"x0:	"	<<	x0.head(12).transpose()
     //<< std::endl;
-    VectorXd newX = rbd.propagateRK4_adaptive(dt, x0).head(12);
+    Vector newX = rbd.propagateRK4_adaptive(dt, x0).head(12);
 
     //	std::cout	<<	"dt:	"	<<	dt	<<
     // std::endl; 	std::cout	<<	"newX:	"	<<
     // newX.transpose()
     //<<	std::endl;
 
-    dynamicPose3d_NL xNew(newX, this->rbd.qref(), this->rbd.getIR(),
-                          this->rbd.getSigmaV(), this->rbd.getSigmaW());
-    xNew.exmap(Eigen::Matrix<double, 12, 1>::Zero());
+    DynamicPose3 xNew(newX, this->rbd.qref(), this->rbd.getIR(),
+                      this->rbd.getSigmaV(), this->rbd.getSigmaW());
+    xNew.exmap(Vector12::Zero());
     return xNew;
   }
 
-  Vector3d getMRPdifference(Vector4d qtot1, Vector4d qtot2) {
-    Vector4d dq = rbd.quaternionDivision(qtot1, qtot2);
-    Vector3d da = rbd.quaternion2mrp(dq);
+  Vector3 getMRPdifference(Vector4 qtot1, Vector4 qtot2) {
+    Vector4 dq = rbd.quaternionDivision(qtot1, qtot2);
+    Vector3 da = rbd.quaternion2mrp(dq);
     return da;
   }
 
   // compute	the	control	input	using	w_t	=	x_{t+1}	-
   // \int_tˆ{t+1}f(x_t)
-  VectorXd computeStateChange(dynamicPose3d_NL& prev, double dt,
-                              InertiaRatios& ir) {
-    VectorXd w;
+  Vector computeStateChange(DynamicPose3& prev, double dt, InertiaRatios& ir) {
+    Vector w;
 
-    dynamicPose3d_NL predicted = prev.propagate(dt, ir);
+    DynamicPose3 predicted = prev.propagate(dt, ir);
 
-    Vector4d qTot = this->qTotal();
-    Vector4d qTotpred = predicted.qTotal();
-    Vector3d da = getMRPdifference(qTot, qTotpred);
+    Vector4 qTot = this->qTotal();
+    Vector4 qTotpred = predicted.qTotal();
+    Vector3 da = getMRPdifference(qTot, qTotpred);
 
     w = this->x() - predicted.x();
     w.segment<3>(6) = da;
@@ -194,22 +188,22 @@ class dynamicPose3d_NL {
     return w;
   }
 
-  gtsam::Vector6 getOdometry() {
-    gtsam::Vector6 odo;
-    VectorXd x = rbd.x();
-    Vector4d qref = rbd.qref();
-    Vector3d a = x.segment<3>(6);
+  Vector6 getOdometry() {
+    Vector6 odo;
+    Vector x = rbd.x();
+    Vector4 qref = rbd.qref();
+    Vector3 a = x.segment<3>(6);
     odo.head(3) = x.segment<3>(0);
-    Vector4d qnew = rbd.addQuaternionError(a, qref);
+    Vector4 qnew = rbd.addQuaternionError(a, qref);
     odo.tail(3) = rbd.quaternion2mrp(qnew);
     return odo;
   }
 
-  gtsam::Vector6 getOdometry(dynamicPose3d_NL& prev) {
-    gtsam::Vector6 odo;
-    VectorXd x, xprev;
-    Vector4d q, qprev;
-    Vector3d a, aprev;
+  Vector6 getOdometry(DynamicPose3& prev) {
+    Vector6 odo;
+    Vector x, xprev;
+    Vector4 q, qprev;
+    Vector3 a, aprev;
 
     x = rbd.x();
     xprev = prev.x();
@@ -221,36 +215,36 @@ class dynamicPose3d_NL {
 
     aprev = xprev.segment<3>(6);
 
-    Vector3d dr = x.segment<3>(0) - xprev.segment<3>(0);
-    Vector4d qtot_this = rbd.addQuaternionError(a, q);
-    Vector4d qtot_prev = rbd.addQuaternionError(aprev, qprev);
+    Vector3 dr = x.segment<3>(0) - xprev.segment<3>(0);
+    Vector4 qtot_this = rbd.addQuaternionError(a, q);
+    Vector4 qtot_prev = rbd.addQuaternionError(aprev, qprev);
 
-    Vector4d qprev_inv;
+    Vector4 qprev_inv;
     qprev_inv << -qtot_prev(0), -qtot_prev(1), -qtot_prev(2), qtot_prev(3);
-    Vector4d qDiff = rbd.quaternionMultiplication(qtot_this, qprev_inv);
-    Vector3d mrp = rbd.quaternion2mrp(qDiff);
+    Vector4 qDiff = rbd.quaternionMultiplication(qtot_this, qprev_inv);
+    Vector3 mrp = rbd.quaternion2mrp(qDiff);
     odo.tail(3) = mrp;
 
-    Matrix3d Rprev = rbd.rotationMatrix(qtot_prev);
+    Matrix3 Rprev = rbd.rotationMatrix(qtot_prev);
     odo.head(3) = Rprev.transpose() * dr;
 
     return odo;
   }
 
-  dynamicPose3d_NL getOdometryPose(dynamicPose3d_NL& prev, bool initVelocities,
-                                   double dt) {
-    dynamicPose3d_NL newPose(prev.rbd.getIR(), prev.rbd.getSigmaV(),
-                             prev.rbd.getSigmaW());
-    VectorXd new_x(12);
-    Vector3d new_r;
-    Vector3d new_v;
-    Vector3d new_a;
-    Vector4d new_q;
-    Vector3d new_w;
+  DynamicPose3 getOdometryPose(DynamicPose3& prev, bool initVelocities,
+                               double dt) {
+    DynamicPose3 newPose(prev.rbd.getIR(), prev.rbd.getSigmaV(),
+                         prev.rbd.getSigmaW());
+    Vector new_x(12);
+    Vector3 new_r;
+    Vector3 new_v;
+    Vector3 new_a;
+    Vector4 new_q;
+    Vector3 new_w;
 
-    VectorXd x, xprev;
-    Vector4d q, qprev;
-    Vector3d a, aprev;
+    Vector x, xprev;
+    Vector4 q, qprev;
+    Vector3 a, aprev;
 
     // get	x's
     x = rbd.x();
@@ -262,16 +256,16 @@ class dynamicPose3d_NL {
     q = rbd.qref();
     qprev = prev.q();
     // total	attitude
-    Vector4d qtot_this = rbd.addQuaternionError(a, q);
-    Vector4d qtot_prev = rbd.addQuaternionError(aprev, qprev);
-    Vector4d qprev_inv;
+    Vector4 qtot_this = rbd.addQuaternionError(a, q);
+    Vector4 qtot_prev = rbd.addQuaternionError(aprev, qprev);
+    Vector4 qprev_inv;
     qprev_inv << -qtot_prev(0), -qtot_prev(1), -qtot_prev(2), qtot_prev(3);
-    Vector4d qDiff = rbd.quaternionMultiplication(qtot_this, qprev_inv);
+    Vector4 qDiff = rbd.quaternionMultiplication(qtot_this, qprev_inv);
     // previous	rotation	mat
-    Matrix3d Rprev = rbd.rotationMatrix(qtot_prev);
+    Matrix3 Rprev = rbd.rotationMatrix(qtot_prev);
 
     new_r = Rprev.transpose() * (x.segment<3>(0) - xprev.segment<3>(0));
-    Matrix3d Rdiff = rbd.rotationMatrix(qDiff);
+    Matrix3 Rdiff = rbd.rotationMatrix(qDiff);
     new_q = rbd.quaternionFromRot(Rdiff);
 
     if (initVelocities) {
@@ -290,10 +284,10 @@ class dynamicPose3d_NL {
        */
       new_w = 2 * new_q.head(3) / dt;
     } else {
-      new_v = Vector3d::Zero();
-      new_w = Vector3d::Zero();
+      new_v = Vector3::Zero();
+      new_w = Vector3::Zero();
     }
-    new_a = Vector3d::Zero();
+    new_a = Vector3::Zero();
 
     new_x.block<3, 1>(0, 0) = new_r;
     new_x.block<3, 1>(3, 0) = new_v;
@@ -303,29 +297,29 @@ class dynamicPose3d_NL {
     return newPose;
   }
 
-  dynamicPose3d_NL adjustAttitude(dynamicPose3d_NL& prev) {
-    Vector4d q, qprev;
-    dynamicPose3d_NL newPose(prev.rbd.getIR(), prev.rbd.getSigmaV(),
-                             prev.rbd.getSigmaW());
+  DynamicPose3 adjustAttitude(DynamicPose3& prev) {
+    Vector4 q, qprev;
+    DynamicPose3 newPose(prev.rbd.getIR(), prev.rbd.getSigmaV(),
+                         prev.rbd.getSigmaW());
 
-    VectorXd x = rbd.x();
+    Vector x = rbd.x();
     q = rbd.qTotal();
     qprev = prev.qTotal();
 
     std::cout << "q:	" << q.transpose() << std::endl;
     std::cout << "qprev:	" << qprev.transpose() << std::endl;
 
-    Matrix3d R = rbd.rotationMatrix(q);
-    Matrix3d Rprev = rbd.rotationMatrix(qprev);
-    Matrix3d Rdiff = R * Rprev.transpose();
-    Vector4d new_qdiff = rbd.quaternionFromRot(Rdiff);
+    Matrix3 R = rbd.rotationMatrix(q);
+    Matrix3 Rprev = rbd.rotationMatrix(qprev);
+    Matrix3 Rdiff = R * Rprev.transpose();
+    Vector4 new_qdiff = rbd.quaternionFromRot(Rdiff);
 
     std::cout << "R:	" << R << std::endl;
     std::cout << "Rprev:	" << Rprev << std::endl;
     std::cout << "Rdiff:	" << Rdiff << std::endl;
     std::cout << "new_qdiff:	" << new_qdiff.transpose() << std::endl;
 
-    Vector4d qnew = rbd.quaternionMultiplication(new_qdiff, qprev);
+    Vector4 qnew = rbd.quaternionMultiplication(new_qdiff, qprev);
 
     std::cout << "qnew	aa:	" << qnew.transpose() << std::endl << std::endl;
     if (isnan(qnew(1))) {
@@ -333,38 +327,38 @@ class dynamicPose3d_NL {
       new_qdiff = rbd.quaternionFromRot(Rdiff);
     }
 
-    x.segment<3>(6) = Vector3d::Zero();
+    x.segment<3>(6) = Vector3::Zero();
     rbd.setState(x, qnew);
     newPose.rbd.setState(x, qnew);
     return newPose;
   }
 
-  void shortenQuaternion(dynamicPose3d_NL& prev) {
-    Vector4d q, qprev, qnew;
+  void shortenQuaternion(DynamicPose3& prev) {
+    Vector4 q, qprev, qnew;
 
-    VectorXd x = rbd.x();
+    Vector x = rbd.x();
     q = rbd.qTotal();
     qprev = prev.qTotal();
     if (q.dot(qprev) < 0) {
       qnew = -q;
-      x.segment<3>(6) = Vector3d::Zero();
+      x.segment<3>(6) = Vector3::Zero();
       rbd.setState(x, qnew);
     }
   }
 
-  dynamicPose3d_NL applyOdometry(dynamicPose3d_NL& prev) {
-    dynamicPose3d_NL newPose(prev.rbd.getIR(), prev.rbd.getSigmaV(),
-                             prev.rbd.getSigmaW());
-    VectorXd new_x(12);
-    Vector3d new_r;
-    Vector3d new_v;
-    Vector3d new_a;
-    Vector4d new_q;
-    Vector3d new_w;
+  DynamicPose3 applyOdometry(DynamicPose3& prev) {
+    DynamicPose3 newPose(prev.rbd.getIR(), prev.rbd.getSigmaV(),
+                         prev.rbd.getSigmaW());
+    Vector new_x(12);
+    Vector3 new_r;
+    Vector3 new_v;
+    Vector3 new_a;
+    Vector4 new_q;
+    Vector3 new_w;
 
-    VectorXd x, xprev;
-    Vector4d q, qprev;
-    Vector3d a, aprev;
+    Vector x, xprev;
+    Vector4 q, qprev;
+    Vector3 a, aprev;
 
     // get	x's
     x = rbd.x();
@@ -376,12 +370,12 @@ class dynamicPose3d_NL {
 
     new_q = rbd.quaternionMultiplication(q, qprev);
 
-    Matrix3d Rprev = rbd.rotationMatrix(qprev);
+    Matrix3 Rprev = rbd.rotationMatrix(qprev);
     new_r = Rprev * x.head(3) + xprev.head(3);
 
-    new_v = Vector3d::Zero();
-    new_a = Vector3d::Zero();
-    new_w = Vector3d::Zero();
+    new_v = Vector3::Zero();
+    new_a = Vector3::Zero();
+    new_w = Vector3::Zero();
 
     new_x.block<3, 1>(0, 0) = new_r;
     new_x.block<3, 1>(3, 0) = new_v;
@@ -392,25 +386,25 @@ class dynamicPose3d_NL {
     return newPose;
   }
 
-  Matrix4d wTo() const {
-    Matrix4d T;
+  Matrix4 wTo() const {
+    Matrix4 T;
 
     // error	quaternion	is	applied
-    Vector4d qtot = rbd.qTotal();
-    VectorXd x = rbd.x();
+    Vector4 qtot = rbd.qTotal();
+    Vector x = rbd.x();
     T.topLeftCorner(3, 3) = rbd.rotationMatrix(qtot).transpose();
     T.col(3).head(3) << x.segment<3>(0);
     T.row(3) << 0., 0., 0., 1.;
     return T;
   }
 
-  Matrix4d oTw() const {
-    Matrix4d T;
-    Matrix3d R;
+  Matrix4 oTw() const {
+    Matrix4 T;
+    Matrix3 R;
 
     // error	quaternion	is	applied
-    Vector4d qtot = rbd.qTotal();
-    VectorXd x = rbd.x();
+    Vector4 qtot = rbd.qTotal();
+    Vector x = rbd.x();
     R = rbd.rotationMatrix(qtot);
 
     T.topLeftCorner(3, 3) = R;
@@ -419,60 +413,60 @@ class dynamicPose3d_NL {
     return T;
   }
 
-  gtsam::Pose3 getPose3d() {
-    return gtsam::Pose3(
+  Pose3 getPose3d() {
+    return Pose3(
         this->wTo());  // may	be	wrong:	Mar	25,	2013,	B.E.T.
     // return	Pose3d(this->oTw());
   }
 
-  gtsam::Vector4 transform_to_inertial(const gtsam::Vector4& pBody) const {
-    Vector3d p;
+  Vector4 transform_to_inertial(const Vector4& pBody) const {
+    Vector3 p;
     p << pBody.x(), pBody.y(), pBody.z();
-    Vector4d qtot = rbd.qTotal();
-    VectorXd x = rbd.x();
-    Vector3d T = x.head(3);
-    Matrix3d Rt = rbd.rotationMatrix(qtot).transpose();
+    Vector4 qtot = rbd.qTotal();
+    Vector x = rbd.x();
+    Vector3 T = x.head(3);
+    Matrix3 Rt = rbd.rotationMatrix(qtot).transpose();
 
-    Vector3d pInertial = Rt * p + T;
+    Vector3 pInertial = Rt * p + T;
 
-    return gtsam::Vector4(pInertial(0), pInertial(1), pInertial(2), 1.0);
+    return Vector4(pInertial(0), pInertial(1), pInertial(2), 1.0);
   }
 
-  gtsam::Vector4 transform_to_body(const gtsam::Vector4& pInertial) const {
-    Vector3d p;
+  Vector4 transform_to_body(const Vector4& pInertial) const {
+    Vector3 p;
     p << pInertial.x(), pInertial.y(), pInertial.z();
-    Vector4d qtot = rbd.qTotal();
-    VectorXd x = rbd.x();
-    Vector3d T = x.head(3);
-    Matrix3d R = rbd.rotationMatrix(qtot);
+    Vector4 qtot = rbd.qTotal();
+    Vector x = rbd.x();
+    Vector3 T = x.head(3);
+    Matrix3 R = rbd.rotationMatrix(qtot);
 
-    Vector3d pBody = R * (p - T);
+    Vector3 pBody = R * (p - T);
 
-    return gtsam::Vector4(pBody(0), pBody(1), pBody(2), 1.0);
+    return Vector4(pBody(0), pBody(1), pBody(2), 1.0);
   }
 
-  gtsam::Noise getProcessNoise(double dt, InertiaRatios ir) {
-    VectorXd x0 = VectorXd::Zero(90);
+  Noise getProcessNoise(double dt, InertiaRatios ir) {
+    Vector x0 = Vector::Zero(90);
     x0.head(12) = rbd.x();
     rbd.setIR(ir);
-    VectorXd newLambda = rbd.propagateRK4_adaptive(dt, x0).tail(78);
+    Vector newLambda = rbd.propagateRK4_adaptive(dt, x0).tail(78);
 
     Eigen::Matrix<double, 12, 12> lambda = rbd.vec2symmMat(newLambda);
-    gtsam::Noise n = gtsam::Covariance(lambda);
+    Noise n = Covariance(lambda);
     return n;
   }
 
-  VectorXd vectorFull() const {
-    VectorXd x = rbd.x();
-    Vector4d q = rbd.qref();
-    Vector3d mrp = rbd.quaternion2mrp(q);
+  Vector vectorFull() const {
+    Vector x = rbd.x();
+    Vector4 q = rbd.qref();
+    Vector3 mrp = rbd.quaternion2mrp(q);
     x(6) += mrp(0);
     x(7) += mrp(1);
     x(8) += mrp(2);
     return x;
   }
 
-  VectorXd vector() const { return rbd.x(); }
+  Vector vector() const { return rbd.x(); }
 
   void write(std::ostream& out) const {
     out << std::endl
@@ -480,5 +474,13 @@ class dynamicPose3d_NL {
     out << "dP3d_NL	qref:	" << rbd.qref().transpose() << std::endl;
     out << std::endl;
   }
+
+  bool equals(const DynamicPose3& dp3, double tol = 1e-9) const { return true; }
 };
+
+std::ostream& operator<<(std::ostream& out, const DynamicPose3& p) {
+  p.write(out);
+  return out;
+}
+
 }  // namespace gtsam

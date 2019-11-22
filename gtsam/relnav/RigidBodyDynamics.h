@@ -1,48 +1,53 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <iostream>
+
+#include <Eigen/Dense>
+
 #include "InertiaRatios.h"
 #include "NonlinearSystem.h"
 
-using namespace Eigen;
+namespace gtsam {
 
 class RigidBodyDynamics : public NonlinearSystem {
-  gtsam::InertiaRatios _ir;
-  Vector4d _qref;
-  Vector3d _r, _v, _a, _w;
-  Matrix<double, 6, 6> _Q;
-  double _sigma_v, _sigma_w;
+ private:
+  InertiaRatios ir_;
+  Vector4 qref_;
+  Vector3 r_, v_, a_, w_;
+  Matrix6 Q_;
+  double sigma_v_, sigma_w_;
 
-  Matrix3d crossProductMat(Vector3d vec);
+  Matrix3 crossProductMat(Vector3 vec);
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  RigidBodyDynamics(gtsam::InertiaRatios ir, double sigma_v, double sigma_w);
-  void setMassProperties(gtsam::InertiaRatios ir);
+  RigidBodyDynamics(InertiaRatios ir, double sigma_v, double sigma_w);
+  void setMassProperties(InertiaRatios ir);
   void setCovProperties(double sigma_v, double sigma_w);
-  VectorXd f(VectorXd x);
-  void setState(VectorXd x, Vector4d q);
-  void setState(VectorXd x);
+  Vector f(Vector x);
+  void setState(Vector x, Vector4 q);
+  void setState(Vector x);
   void reset_qref();
-  Vector4d qref() const { return _qref; };
-  Vector4d qTotal() const;
-  VectorXd symmMat2Vec(Matrix<double, 12, 12> M);
-  Matrix<double, 12, 12> vec2symmMat(VectorXd v);
-  Vector4d quaternionFromRot(Matrix3d &R) const;
-  Vector4d mrp2quaternion(Vector3d mrp) const;
-  Vector3d quaternion2mrp(Vector4d q) const;
-  Vector4d addQuaternionError(Vector3d &mrp, Vector4d &qref) const;
-  Vector4d quaternionMultiplication(Vector4d &q1, Vector4d &q2) const;
-  Vector4d quaternionDivision(Vector4d &q1, Vector4d &q2) const;
-  Vector3d diffQuaternion(Vector4d &q, Vector4d &qprev, double dt) const;
-  Matrix3d rotationMatrix(Vector4d &q) const;
-  Matrix3d getJ() const;
-  gtsam::InertiaRatios getIR() const;
-  void setIR(gtsam::InertiaRatios ir);
-  MatrixXd getBw() const;
+  Vector4 qref() const { return qref_; };
+  Vector4 qTotal() const;
+  Vector symmMat2Vec(Eigen::Matrix<double, 12, 12> M);
+  Eigen::Matrix<double, 12, 12> vec2symmMat(Vector v);
+  Vector4 quaternionFromRot(Matrix3 &R) const;
+  Vector4 mrp2quaternion(Vector3 mrp) const;
+  Vector3 quaternion2mrp(Vector4 q) const;
+  Vector4 addQuaternionError(Vector3 &mrp, Vector4 &qref) const;
+  Vector4 quaternionMultiplication(Vector4 &q1, Vector4 &q2) const;
+  Vector4 quaternionDivision(Vector4 &q1, Vector4 &q2) const;
+  Vector3 diffQuaternion(Vector4 &q, Vector4 &qprev, double dt) const;
+  Matrix3 rotationMatrix(Vector4 &q) const;
+  Matrix3 getJ() const;
+  InertiaRatios getIR() const;
+  void setIR(InertiaRatios ir);
+  Eigen::MatrixXd getBw() const;
   double getSigmaV() const;
   double getSigmaW() const;
 
-  VectorXd x() const;
+  Vector x() const;
 };
+
+}  // namespace gtsam
