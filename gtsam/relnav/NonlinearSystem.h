@@ -19,7 +19,7 @@
 namespace gtsam {
 
 class NonlinearSystem {
-  double h;
+  double h_;
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -30,7 +30,7 @@ class NonlinearSystem {
 
   Vector propagateRK4_adaptive(double tf, Vector x0);
 
-  void setStepSize(double _h) { h = _h; };
+  void setStepSize(double h) { h_ = h; };
 
   virtual Vector f(Vector x) = 0;
 };

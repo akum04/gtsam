@@ -2,7 +2,7 @@
 
 namespace gtsam {
 
-NonlinearSystem::NonlinearSystem() { h = DEFAULT_H; }
+NonlinearSystem::NonlinearSystem() { h_ = DEFAULT_H; }
 
 // RK4 propagation of the vector
 Vector NonlinearSystem::propagateRK4(double tf, Vector x0) {
@@ -13,8 +13,8 @@ Vector NonlinearSystem::propagateRK4(double tf, Vector x0) {
   x = x0;
 
   while (!done) {
-    if (tf - h - t > 0) {
-      dt = h;
+    if (tf - h_ - t > 0) {
+      dt = h_;
     } else {
       dt = tf - t;
       done = true;
@@ -34,16 +34,16 @@ Vector NonlinearSystem::propagateRK4(double tf, Vector x0) {
 // RK4 adaptive propagation
 Vector NonlinearSystem::propagateRK4_adaptive(double tf, Vector x0) {
   bool done = false;
-  double h_starting = this->h;
+  double h_starting = this->h_;
 
-  this->h = tf / INITIAL_H_FACTOR;
+  this->h_ = tf / INITIAL_H_FACTOR;
 
   Vector newX, errX, currX;
   currX = this->propagateRK4(tf, x0);
 
   while (!done) {
-    // new	h	step	size
-    this->h = this->h / 2;
+    // new	h_	step	size
+    this->h_ = this->h_ / 2;
 
     // try	the	new	step	size
     newX = this->propagateRK4(tf, x0);
@@ -52,18 +52,18 @@ Vector NonlinearSystem::propagateRK4_adaptive(double tf, Vector x0) {
     errX = newX - currX;
     double rms_err = sqrt(errX.squaredNorm() / errX.size());
 
-    // check	rms_error	or	if	h	is	too	small
+    // check	rms_error	or	if	h_	is	too	small
     // that it will take too long
-    if (rms_err < RMS_ERR_CUTOFF || this->h <= (tf / LOWER_H_LIMIT_FACTOR)) {
+    if (rms_err < RMS_ERR_CUTOFF || this->h_ <= (tf / LOWER_H_LIMIT_FACTOR)) {
       done = true;
-      if (this->h <= (tf / LOWER_H_LIMIT_FACTOR)) {
+      if (this->h_ <= (tf / LOWER_H_LIMIT_FACTOR)) {
       }
     } else {
       currX = newX;
     }
   }
 
-  this->h = h_starting;
+  this->h_ = h_starting;
   return newX;
 }
 

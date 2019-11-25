@@ -17,7 +17,7 @@
 namespace gtsam {
 
 class InertiaRatios {
-  double _k1, _k2;
+  double k1_, k2_;
 
   friend std::ostream& operator<<(std::ostream& out, const InertiaRatios& p) {
     p.write(out);
@@ -36,26 +36,26 @@ class InertiaRatios {
   static const char* name() { return "InertiaRatios"; }
 
   InertiaRatios() {
-    _k1 = 0;
-    _k2 = 0;
+    k1_ = 0;
+    k2_ = 0;
   }
 
   InertiaRatios(Vector2& k) {
-    _k1 = k(0);
-    _k2 = k(1);
+    k1_ = k(0);
+    k2_ = k(1);
   }
 
   InertiaRatios(const double& k1, const double& k2) {
-    _k1 = k1;
-    _k2 = k2;
+    k1_ = k1;
+    k2_ = k2;
   }
 
   Matrix3 getJ() const {
     Matrix3 J = Matrix3::Zero();
     double Jscale = 1.0;  // 0.0116;
-    J(0, 0) = exp(_k1);
+    J(0, 0) = exp(k1_);
     J(1, 1) = 1.0;
-    J(2, 2) = exp(-_k2);
+    J(2, 2) = exp(-k2_);
 
     J *= Jscale;
 
@@ -64,39 +64,39 @@ class InertiaRatios {
 
   Vector2 x() const {
     Vector2 x;
-    x(0) = _k1;
-    x(1) = _k2;
+    x(0) = k1_;
+    x(1) = k2_;
     return x;
   }
 
   void setState(Vector2 x) {
-    _k1 = x(0);
-    _k2 = x(1);
+    k1_ = x(0);
+    k2_ = x(1);
   }
 
   InertiaRatios exmap(const Vector2& Delta) {
     InertiaRatios res = *this;
-    res._k1 += Delta(0);
-    res._k2 += Delta(1);
+    res.k1_ += Delta(0);
+    res.k2_ += Delta(1);
     return res;
   }
 
   InertiaRatios exmap_reset(const Vector2& Delta) {
     InertiaRatios res = *this;
-    res._k1 += Delta(0);
-    res._k2 += Delta(1);
+    res.k1_ += Delta(0);
+    res.k2_ += Delta(1);
     return res;
   }
 
   Vector2 vector() const {
     Vector2 tmp;
-    tmp << _k1, _k2;
+    tmp << k1_, k2_;
     return tmp;
   }
 
   void set(const Vector2& v) {
-    _k1 = v(0);
-    _k2 = v(1);
+    k1_ = v(0);
+    k2_ = v(1);
   }
 
   void write(std::ostream& out) const {
@@ -108,7 +108,7 @@ class InertiaRatios {
   }
 
   bool equals(const InertiaRatios& ir, double tol = 1e-9) const {
-    return (_k1 < tol && _k2 < tol);
+    return (k1_ < tol && k2_ < tol);
   }
 
   void Print(const std::string& str = "") {
@@ -116,7 +116,7 @@ class InertiaRatios {
       std::cout << "Inertia Ratios: ";
     else
       std::cout << str << " ";
-    std::cout << _k1 << _k2 << std::endl;
+    std::cout << k1_ << k2_ << std::endl;
   }
 };
 

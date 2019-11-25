@@ -108,13 +108,13 @@ class DynamicPose3 {
   Vector4 q() { return rbd.qref(); };
   Vector4 qTotal() const { return rbd.qTotal(); };
 
-  DynamicPose3 exmap(const Vector12& Delta) const {
+  DynamicPose3 Expmap(const Vector12& Delta) const {
     DynamicPose3 res = *this;
     res.rbd.setState(res.rbd.x() + Delta);
     return res;
   }
 
-  DynamicPose3 exmap_reset(const Vector12& Delta) {
+  DynamicPose3 Expmap_reset(const Vector12& Delta) {
     DynamicPose3 res = *this;
     res.rbd.setState(res.rbd.x() + Delta);
     res.rbd.reset_qref();
@@ -130,7 +130,7 @@ class DynamicPose3 {
      */
 
     // NOTE	-	THIS	IS	NOW	DONE	in
-    // NodeExmapT->apply_reset();
+    // NodeExpmapT->apply_reset();
 
     return res;
   }
@@ -161,7 +161,7 @@ class DynamicPose3 {
 
     DynamicPose3 xNew(newX, this->rbd.qref(), this->rbd.getIR(),
                       this->rbd.getSigmaV(), this->rbd.getSigmaW());
-    xNew.exmap(Vector12::Zero());
+    xNew.Expmap(Vector12::Zero());
     return xNew;
   }
 

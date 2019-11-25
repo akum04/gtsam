@@ -18,11 +18,11 @@ class principalAxesFrame {
     return out;
   }
   // position	from the target frame	to the	principal frame
-  Vector3 _r;
+  Vector3 r_;
   // quaternion	from	the	target frame to the	principal frame
-  Vector4 _q;
+  Vector4 q_;
   // parameter attitude	error - Modified Rodrigues Parameter
-  Vector3 _a;
+  Vector3 a_;
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -32,36 +32,36 @@ class principalAxesFrame {
   Matrix6 _sqrtinf;
 
   principalAxesFrame() {
-    _r << 0.0, 0.0, 0.0;
-    _a << 0.0, 0.0, 0.0;
-    _q << 0.0, 0.0, 0.0, 1.0;
+    r_ << 0.0, 0.0, 0.0;
+    a_ << 0.0, 0.0, 0.0;
+    q_ << 0.0, 0.0, 0.0, 1.0;
   }
 
-  principalAxesFrame(Vector3 r) { _r = r; }
+  principalAxesFrame(Vector3 r) { r_ = r; }
 
   principalAxesFrame(Vector3 r, Vector4 q) {
-    _r = r;
-    _q = q;
+    r_ = r;
+    q_ = q;
   }
 
   Vector6 vector() const {
     Vector6 x;
-    x << _r, _a;
+    x << r_, a_;
     return x;
   }
 
   void set(const Vector6& v) {
-    _r = v.block<3, 1>(0, 0);
-    _a = v.block<3, 1>(3, 0);
+    r_ = v.block<3, 1>(0, 0);
+    a_ = v.block<3, 1>(3, 0);
   }
 
   Vector6 x() {
     Vector6 x;
-    x << _r, _a;
+    x << r_, a_;
     return x;
   }
 
-  Vector4 q() { return _q; }
+  Vector4 q() { return q_; }
 
   Vector4 mrp2quaternion(Vector3 mrp) const {
     Vector4 dq;
@@ -80,22 +80,22 @@ class principalAxesFrame {
 
   principalAxesFrame exmap(const Vector6& Delta) const {
     principalAxesFrame res = *this;
-    res._r += Delta.block<3, 1>(0, 0);
-    res._a += Delta.block<3, 1>(3, 0);
+    res.r_ += Delta.block<3, 1>(0, 0);
+    res.a_ += Delta.block<3, 1>(3, 0);
     return res;
   }
 
   principalAxesFrame exmap_reset(const Vector6& Delta) {
     principalAxesFrame res = *this;
 
-    res._r += Delta.block<3, 1>(0, 0);
-    res._a += Delta.block<3, 1>(3, 0);
+    res.r_ += Delta.block<3, 1>(0, 0);
+    res.a_ += Delta.block<3, 1>(3, 0);
 
     res.write();
 
     // reset	step
-    res._q = addQuaternionError(res._a, res._q);
-    res._a = Vector3::Zero();
+    res.q_ = addQuaternionError(res.a_, res.q_);
+    res.a_ = Vector3::Zero();
 
     printf("inertial	reset\n");
 
@@ -103,9 +103,9 @@ class principalAxesFrame {
   }
 
   void write(std::ostream& out = std::cout) const {
-    out << "	" << _r.transpose();
-    out << "	" << _q(0) << "	" << _q(1) << "	" << _q(2) << "	" << _q(3);
-    out << "	" << _a.transpose();
+    out << "	" << r_.transpose();
+    out << "	" << q_(0) << "	" << q_(1) << "	" << q_(2) << "	" << q_(3);
+    out << "	" << a_.transpose();
     out << std::endl;
   }
 
@@ -143,16 +143,16 @@ class principalAxesFrame {
   }
 
   Point3 toPrincipalFrame(const Point3& p_m) const {
-    Matrix3 R = rotationMatrix(addQuaternionError(_a, _q));
-    Vector3 vecBody = R * (p_m.vector() - _r);
+    Matrix3 R = rotationMatrix(addQuaternionError(a_, q_));
+    Vector3 vecBody = R * (p_m.vector() - r_);
     Point3 p_c(vecBody);
 
     return p_c;
   }
 
   Point3 fromPrincipalFrame(const Point3& p_m) const {
-    Matrix3 R = rotationMatrix(addQuaternionError(_a, _q));
-    Vector3 vecBody = R.transpose() * p_m.vector() + _r;
+    Matrix3 R = rotationMatrix(addQuaternionError(a_, q_));
+    Vector3 vecBody = R.transpose() * p_m.vector() + r_;
     Point3 p_c(vecBody);
 
     return p_c;
