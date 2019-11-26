@@ -26,18 +26,12 @@ class RigidBody : public NonlinearSystem {
 
  protected:
   Matrix3 SkewSymmetric(Vector3 q) {
-    Matrix3 M = Matrix3::Zero();
-    M(0, 1) = -q(2);
-    M(0, 2) = q(1);
-    M(1, 0) = q(2);
-    M(1, 2) = -q(0);
-    M(2, 0) = -q(1);
-    M(2, 1) = q(0);
-
+    Matrix3 M;
+    M << 0.0, -q(2), q(1), q(2), 0.0, -q(0), -q(1), q(0), 0.0;
     return M;
   }
 
-  void RigidBody::setMassProperties(InertiaRatios ir) { ir_ = ir; }
+  void RigidBody::SetMassProperties(InertiaRatios ir) { ir_ = ir; }
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -45,6 +39,9 @@ class RigidBody : public NonlinearSystem {
 
   void SetState(Vector x, Vector4 q);
   void SetState(Vector x);
+
+  void SetPose(Pose3 pose);
+  Pose3 GetPose();
   // void reset_qref();
   // Vector4 qTotal() const;
 

@@ -52,9 +52,8 @@ class KinematicPose3 {
   KinematicPose3(const Vector6& x, const Vector4& q)
       : r_(x.segment<3>(0)), a_(x.segment<3>(3)), qref_(q / q.norm()) {}
 
-  KinematicPose3(const Vector6& x) : {
-    r_(x.segment<3>(0)), a_(x.segment<3>(3)), qref_(0.0, 0.0, 0.0, 1.0);
-  }
+  KinematicPose3(const Vector6& x)
+      : r_(x.segment<3>(0)), a_(x.segment<3>(3)), qref_(0.0, 0.0, 0.0, 1.0) {}
 
   Vector4 mrp2quaternion(Vector3 mrp) const {
     Vector4 dq;
@@ -220,8 +219,7 @@ class KinematicPose3 {
   // }
 
   void write(std::ostream& out) const {
-    out << std::endl
-        << "kinPose3	x:	" << x().transpose() << std::endl;
+    out << std::endl << "kinPose3	x:	" << x().transpose() << std::endl;
     out << "kinPose3	qref:	" << qref().transpose() << std::endl;
     out << std::endl;
   }

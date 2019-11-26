@@ -23,8 +23,16 @@ RigidBody::RigidBody(InertiaRatios ir) {
   v_ = Vector3::Zero();
   w_ = Vector3::Zero();
 
-  setMassProperties(ir);
+  SetMassProperties(ir);
 }
+
+void RigidBody::SetPose(Pose3 pose) {
+  Rot3 r = pose.rotation();
+  Vector3 t = pose.translation();
+  pose_ = Pose3(r, t);
+}
+
+Pose3 RigidBody::GetPose() { return pose_; }
 
 void RigidBody::SetState(Vector x) {
   if (x.size() == 12) {
@@ -85,7 +93,7 @@ Vector RigidBody::f(Vector x) {
 
   // Covariance	Propagation	according	to	Lyapunov
   // function see	Brown	&	Hwang	pg	204
-
+  /*
   // Compute	Linear	transition	matrix
   Eigen::Matrix<double, 12, 12> A = Eigen::Matrix<double, 12, 12>::Zero();
 
@@ -103,12 +111,13 @@ Vector RigidBody::f(Vector x) {
   lambda = vec2symmMat(x.segment<78>(12));
   dLambda = A * lambda + lambda * A.transpose() + Bw * Q_ * Bw.transpose();
   vec_dLambda = symmMat2Vec(dLambda);
+  */
   // write	to	dx
   dx.segment<3>(0) = dr;
   dx.segment<3>(3) = dv;
   dx.segment<3>(6) = da;
   dx.segment<3>(9) = dw;
-  dx.segment<78>(12) = vec_dLambda;
+  // dx.segment<78>(12) = vec_dLambda;
 
   return dx;
 }
@@ -141,7 +150,9 @@ Eigen::Matrix<double, 12, 12> RigidBody::vec2symmMat(Vector v) {
 Vector RigidBody::Xq() const {
   Vector x(13);
   x.segment<3>(0) = pose_.translation();
-  x.segment<3>(3) = pose_.rotation();
+  Quaternion q = pose_.rotation().toQuaternion();
+  x(3) = q.w();
+  x.segment<3>(4) = q.vec();
   x.segment<3>(7) = v_;
   x.segment<3>(10) = w_;
   return x;
@@ -151,8 +162,7 @@ Vector RigidBody::x() const {
   Vector x(12);
   x.segment<3>(0) = pose_.translation();
   x.segment<3>(3) = v_;
-  x.segment<3>(6) = pose_.rotation().toQuaternion();
-  x.segment<3>(9) = w_;
+  x.segment<3>(6) = x.segment<3>(9) = w_;
   return x;
 }
 
