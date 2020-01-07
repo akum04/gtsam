@@ -2,11 +2,11 @@
 
 #include <iostream>
 
-#include <gtsam/config.h>
-
 #include <Eigen/Dense>
 
+#include <gtsam/config.h>
 #include <gtsam/geometry/Pose3.h>
+
 #include "InertiaRatios.h"
 #include "NonlinearSystem.h"
 
@@ -22,7 +22,7 @@ class RigidBody : public NonlinearSystem {
  private:
   InertiaRatios ir_;
   Pose3 pose_;
-  Vector3 v_, w_;
+  Vector3 r_, a_, v_, w_;
 
  protected:
   Matrix3 SkewSymmetric(Vector3 q) {
@@ -31,24 +31,27 @@ class RigidBody : public NonlinearSystem {
     return M;
   }
 
-  void RigidBody::SetMassProperties(InertiaRatios ir) { ir_ = ir; }
+  void SetMassProperties(InertiaRatios ir) { ir_ = ir; }
 
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   RigidBody(InertiaRatios ir);
-
-  void SetState(Vector x, Vector4 q);
-  void SetState(Vector x);
-
   void SetPose(Pose3 pose);
   Pose3 GetPose();
-  // void reset_qref();
-  // Vector4 qTotal() const;
+
+  void SetState(Vector x);
+  void SetState(Vector x, Vector4 q);
+  void SetState(Vector x, Quaternion q);
 
   Vector f(Vector x);
-  Vector4 qref() const { return qref_; };
+
   Vector symmMat2Vec(Eigen::Matrix<double, 12, 12> M);
   Eigen::Matrix<double, 12, 12> vec2symmMat(Vector v);
+
+  // void reset_qref();
+  Vector4 qTotal() const;
+  // Vector4 qref() const { return qref_; };
+
   // Vector4 quaternionFromRot(Matrix3 &R) const;
   // Vector4 mrp2quaternion(Vector3 mrp) const;
   // Vector3 quaternion2mrp(Vector4 q) const;
@@ -61,11 +64,13 @@ class RigidBody : public NonlinearSystem {
   InertiaRatios getIR() const;
   void setIR(InertiaRatios ir);
   Eigen::MatrixXd getBw() const;
-  double getSigmaV() const;
-  double getSigmaW() const;
+  // double getSigmaV() const;
+  // double getSigmaW() const;
 
   Vector x() const;
-  Vector Xq() const;
+
+  void print(const std::string& s);
+  bool equals(const RigidBody& rb, double tol) const;
 };
 
 }  // namespace gtsam

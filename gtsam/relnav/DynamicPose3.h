@@ -4,7 +4,7 @@
 #include <ostream>
 // #include "FactorVariableNoise.h"
 // #include "isam/isam.h"
-#include <gtsam/geometry/Pose3.h>
+// #include <gtsam/geometry/Pose3.h>
 #include "Noise.h"
 #include "RigidBodyDynamics.h"
 
@@ -45,7 +45,7 @@ class DynamicPose3 {
       : rbd(ir, sigma_v, sigma_w) {
     Vector4 qref;
     qref << 0, 0, 0, 1;
-    if (x.size() == 12) {
+    if (x.size() == 9) {
       rbd.setState(x, qref);
     }
   }

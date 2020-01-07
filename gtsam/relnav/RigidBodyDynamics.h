@@ -4,6 +4,8 @@
 
 #include <Eigen/Dense>
 
+#include <gtsam/config.h>
+
 #include "InertiaRatios.h"
 #include "NonlinearSystem.h"
 

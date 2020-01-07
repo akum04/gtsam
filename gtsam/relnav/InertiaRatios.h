@@ -111,25 +111,23 @@ class InertiaRatios {
     return (k1_ < tol && k2_ < tol);
   }
 
-  void Print(const std::string& str = "") {
-    if (str.size() == 0)
-      std::cout << "Inertia Ratios: ";
-    else
-      std::cout << str << " ";
-    std::cout << k1_ << k2_ << std::endl;
+  void print(const std::string& str) {
+    std::cout << k1_ << "\n" << k2_ << std::endl;
   }
 };
+/*
+typedef NodeExmapT<InertiaRatios> InertiaRatios_Node;
 
-// typedef NodeExmapT<InertiaRatios> InertiaRatios_Node;
+class InertiaRatiosFactor : gtsam::NoiseModelFactor1<InertiaRatios> {
+ public:
+  Vector evaluateError(Selector s = ESTIMATE) const {
+    InertiaRatios ir = _ir_node->value(s);
+    Vector err = ir.vector() - _measure.vector();
+    return err;
+  }
+};
+*/
 
-// class InertiaRatiosFactor : gtsam::NoiseModelFactor1<InertiaRatios> {
-//  public:
-//   Vector evaluateError(Selector s = ESTIMATE) const {
-//     InertiaRatios ir = _ir_node->value(s);
-//     Vector err = ir.vector() - _measure.vector();
-//     return err;
-//   }
-// };
 /**
  *	Prior	on	InertiaRatios.
  */
