@@ -1,18 +1,14 @@
 #pragma once
 
-// #include <isam/Factor.h>
-// #include <isam/Node.h>
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
 #include <cmath>
 #include <iostream>
+#include <string>
+
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 #include <gtsam/base/Testable.h>
 #include <gtsam/nonlinear/NonlinearFactor.h>
-
-#include <string>
-
-// #include "NodeExmap.h"
 
 namespace gtsam {
 
