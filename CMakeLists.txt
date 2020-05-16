@@ -126,7 +126,7 @@ endif()
 # Options relating to MATLAB wrapper TODO: Check for matlab mex binary before
 # handling building of binaries
 option(GTSAM_INSTALL_MATLAB_TOOLBOX
-       "Enable/Disable installation of matlab toolbox" ON)
+       "Enable/Disable installation of matlab toolbox" OFF)
 option(GTSAM_INSTALL_CYTHON_TOOLBOX
        "Enable/Disable installation of Cython toolbox" OFF)
 option(

@@ -77,12 +77,15 @@ int main(int argc, char* argv[]) {
   noiseModel::Diagonal::shared_ptr poseNoise = noiseModel::Diagonal::Sigmas((Vector(6) << Vector3::Constant(0.3), Vector3::Constant(0.1)).finished()); // 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
   graph.emplace_shared<PriorFactor<Pose3> >(Symbol('x', 0), poses[0], poseNoise); // add directly to graph
 
+  Quaternion q;
   // Simulated measurements from each camera pose, adding them to the factor graph
   for (size_t i = 0; i < poses.size(); ++i) {
     SimpleCamera camera(poses[i], *K);
+    cout << poses[i].rotation().quaternion() << "\n" << poses[i].translation() << endl;
     for (size_t j = 0; j < points.size(); ++j) {
       Point2 measurement = camera.project(points[j]);
       graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(measurement, measurementNoise, Symbol('x', i), Symbol('l', j), K);
+      cout << Symbol('x', i) << Symbol('l', j) << measurement << endl;
     }
   }
 
